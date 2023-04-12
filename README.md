@@ -1,9 +1,6 @@
 Usage:
 
 ```
-→ cargo build
-   Compiling adder v0.1.0 (/Users/joe/src/adder)
-    Finished dev [unoptimized + debuginfo] target(s) in 0.94s
 → cargo run -- test/add.snek  test/add.s
     Finished dev [unoptimized + debuginfo] target(s) in 0.05s
      Running `target/x86_64-apple-darwin/debug/adder test/add.snek test/add.s`
