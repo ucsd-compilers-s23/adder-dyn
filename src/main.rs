@@ -193,6 +193,7 @@ our_code_starts_here:
     };
     {
       println!("Rewritten to hardcode 3x the value directly:\n{}", jitted_fn_again());
+      println!("Did the value move? {:?} {:?}", jitted_fn, jitted_fn_again);
     }
 
     Ok(())
