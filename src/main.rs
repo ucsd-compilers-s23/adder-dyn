@@ -120,6 +120,14 @@ fn compile_to_instrs(e: &Expr) -> Vec<Instr> {
     return v;
 }
 
+fn interp(e: &Expr) -> i32 {
+    match e {
+        Expr::Num(n) => *n,
+        Expr::Add1(subexpr) => 1 + interp(subexpr),
+        Expr::Sub1(subexpr) => interp(subexpr) - 1
+    }
+}
+
 fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
 
@@ -155,11 +163,37 @@ our_code_starts_here:
     dynasm!(ops
     ; .arch x64
     ; ret);
-    let buf = ops.finalize().unwrap();
-    let jitted_fn: extern "C" fn() -> i32 = unsafe { mem::transmute(buf.ptr(start)) };
+    ops.commit();
+    let jitted_fn : extern "C" fn() -> i32 = {
+      let reader = ops.reader();
+      let buf = reader.lock();
+      unsafe { mem::transmute(buf.ptr(start)) }
+    };
 
     println!("Generated assembly:\n{}", asm_program);
-    println!("Evaluates to:\n{}", jitted_fn());
+    println!("Result from long-form code:\n{}", jitted_fn());
+
+    let answer = interp(&expr) * 3; // multiply by 3 so we can see the effect
+    ops.alter(|modifier| {
+      dynasm!(modifier
+      ; .arch x64
+      ; mov rax, answer
+      ; ret
+      )
+    }).unwrap();
+    ops.commit(); // is this necessary? probably
+    // So, you could just call jitted_fn again (it “works”, but probably not
+    // always). I think this is safer (?) because the reader() is designed
+    // to make sure everything is finalized and read only before jumping and
+    // executing. Hard to test the failure case.
+    let jitted_fn_again : extern "C" fn() -> i32 = {
+      let reader = ops.reader();
+      let buf = reader.lock();
+      unsafe { mem::transmute(buf.ptr(start)) }
+    };
+    {
+      println!("Rewritten to hardcode 3x the value directly:\n{}", jitted_fn_again());
+    }
 
     Ok(())
 }
